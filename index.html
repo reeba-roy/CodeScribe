@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Codescribe - Audio Processing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow-y: auto;
+        }
+        
+        canvas#background-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        
+        .upload-container {
+            width: auto;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: rgba(25, 25, 35, 0.8);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+        
+        .upload-area {
+            border: 2px dashed #4f9cff;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-area:hover {
+            border-color: #77b5ff;
+            background-color: rgba(79, 156, 255, 0.1);
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            color: #4f9cff;
+            margin-bottom: 10px;
+        }
+        
+        #file-input {
+            display: none;
+        }
+        
+        .file-info {
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        
+        .status-container {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: rgba(35, 35, 45, 0.7);
+        }
+        
+        .processing-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #4f9cff;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .transcription-container {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: rgba(35, 35, 45, 0.7);
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .transcription-text {
+            line-height: 1.6;
+            white-space: pre-wrap;
+            text-align: left;
+        }
+        
+        .back-button {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #333;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+        
+        .back-button:hover {
+            background-color: #444;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="brand">
+            <h1>CODESCRIBE</h1>
+        </div>
+        <p class="tagline">Your solution for audio conversion and code switching</p>
+    </header>
+    <main>
+        <div class="upload-container">
+            <h2>Upload Audio for Transcription</h2>
+            <div class="upload-area" id="upload-area">
+                <div class="upload-icon">⬆️</div>
+                <h3>Drag & Drop your audio file here</h3>
+                <p>or</p>
+                <button class="cta-button" id="browse-button">Browse Files</button>
+                <input type="file" id="file-input" accept=".wav" />
+                <p class="file-info">Only WAV files are supported</p>
+            </div>
+            
+            <div class="status-container hidden" id="status-container">
+                <div class="processing-spinner"></div>
+                <span id="status-text">Processing your audio...</span>
+            </div>
+            
+            <div class="transcription-container hidden" id="transcription-container">
+                <h3>Transcription Results</h3>
+                <div class="transcription-text" id="transcription-text"></div>
+            </div>
+            
+            <a href="/" class="back-button">Back to Home</a>
+        </div>
+    </main>
+    
+    <script>
+        // File Upload Handling
+        document.addEventListener('DOMContentLoaded', function() {
+            const uploadArea = document.getElementById('upload-area');
+            const fileInput = document.getElementById('file-input');
+            const browseButton = document.getElementById('browse-button');
+            const statusContainer = document.getElementById('status-container');
+            const statusText = document.getElementById('status-text');
+            const transcriptionContainer = document.getElementById('transcription-container');
+            const transcriptionText = document.getElementById('transcription-text');
+
+            // Open file dialog when clicking the browse button
+            browseButton.addEventListener('click', () => {
+                fileInput.click();
+            });
+
+            // Handle file selection
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFile(e.target.files[0]);
+                }
+            });
+
+            // Setup drag and drop
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#77b5ff';
+                uploadArea.style.backgroundColor = 'rgba(79, 156, 255, 0.1)';
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.style.borderColor = '#4f9cff';
+                uploadArea.style.backgroundColor = '';
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#4f9cff';
+                uploadArea.style.backgroundColor = '';
+                
+                if (e.dataTransfer.files.length > 0) {
+                    const file = e.dataTransfer.files[0];
+                    if (file.name.toLowerCase().endsWith('.wav')) {
+                        handleFile(file);
+                    } else {
+                        alert('Please upload a WAV file.');
+                    }
+                }
+            });
+
+            // Handle file upload and processing
+            function handleFile(file) {
+                if (!file.name.toLowerCase().endsWith('.wav')) {
+                    alert('Please upload a WAV file.');
+                    return;
+                }
+
+                // Show status
+                statusContainer.classList.remove('hidden');
+                statusText.textContent = 'Uploading audio file...';
+                
+                const formData = new FormData();
+                formData.append('file', file);
+
+                // Upload the file
+                fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Check if there's a redirect URL in the response
+                    if (data.redirect) {
+                        // Redirect to the results page
+                        window.location.href = data.redirect;
+                    } else {
+                        // Fallback to showing results on the same page (legacy behavior)
+                        statusContainer.classList.add('hidden');
+                        transcriptionContainer.classList.remove('hidden');
+                        
+                        // Display transcription
+                        if (data.transcription) {
+                            transcriptionText.textContent = data.transcription;
+                        } else {
+                            transcriptionText.textContent = 'No transcription was generated.';
+                        }
+                    }
+                })
+                .catch(error => {
+                    statusContainer.classList.remove('hidden');
+                    statusText.textContent = `Error: ${error.message}`;
+                    console.error('Error:', error);
+                });
+            }
+        });
+
+        // Apply fade-in animation
+        window.addEventListener('load', () => {
+            document.body.classList.add('fade-in');
+        });
+    </script>
+</body>
+</html>

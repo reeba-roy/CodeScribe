@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CODESCRIBE</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow-y: auto;
+        }
+        
+        main {
+            flex-grow: 1;
+            padding: 20px;
+        }
+        
+        canvas#background-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="background-animation"></canvas>
+    <header>
+        <div class="brand">
+            <h1>CODESCRIBE</h1>
+        </div>
+        <p class="tagline">Your solution for audio conversion and code switching</p>
+    </header>
+    <main>
+        <section class="hero">
+            <h2>Transform Classroom Audio</h2>
+            <a href="/upload" class="cta-button" id="get-started-button">Get Started</a>
+        </section>
+       
+    </main>
+    <script>
+        window.addEventListener('load', () => {
+            document.body.classList.add('fade-in'); // Apply fade-in animation
+        });
+
+       
+    </script>
+</body>
+</html>
