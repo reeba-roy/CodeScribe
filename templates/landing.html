@@ -203,7 +203,25 @@
     <main>
         <section class="hero">
             <h2>Transform voice to smart study notes</h2>
-            <a href="/upload" class="cta-button" id="get-started-button">Get Started</a>
+            <p style="font-size: 16px; color: var(--text-secondary); margin-bottom: 30px; letter-spacing: 0.3px;">Select the language mixed with English in your audio</p>
+            
+            <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px;">
+                <form action="/upload" method="GET" style="display: inline;">
+                    <input type="hidden" name="language" value="malayalam">
+                    <button type="submit" class="cta-button" style="background: linear-gradient(135deg, #D8C1E8 0%, #B89DD4 100%); border: 2px solid #D8C1E8; transition: all 0.3s ease;">
+                        🇮🇳 Malayalam + English
+                    </button>
+                </form>
+                
+                <form action="/upload" method="GET" style="display: inline;">
+                    <input type="hidden" name="language" value="hindi">
+                    <button type="submit" class="cta-button" style="background: linear-gradient(135deg, #A8D4E6 0%, #7BBFD8 100%); border: 2px solid #A8D4E6; transition: all 0.3s ease;">
+                        🇮🇳 Hindi + English
+                    </button>
+                </form>
+            </div>
+            
+            <p style="font-size: 13px; color: var(--text-secondary); font-style: italic;">Choose the regional language that's mixed with English in your classroom recording</p>
         </section>
        
     </main>

@@ -439,10 +439,15 @@
 
                 // Show status
                 statusContainer.classList.remove('hidden');
-                statusText.textContent = 'Uploading audio file...';
+                statusText.textContent = 'Processing...';
+                
+                // Get language from URL parameters
+                const urlParams = new URLSearchParams(window.location.search);
+                const language = urlParams.get('language') || 'malayalam';
                 
                 const formData = new FormData();
                 formData.append('file', file);
+                formData.append('language', language);
 
                 // Upload the file
                 fetch('/upload', {

@@ -146,7 +146,7 @@ def generate_summary_with_gemini(transcription):
             "covered. Ensure the summary is concise but retains the essential details of the topics "
             "discussed. Using these transcribed text, generate a detailed note for students to refer "
             "during learning sessions, these notes can also include information not mentioned during "
-            "the class, include sample questions where possible. Do not use bold text or italics in your response\n\n"
+            "the class, include sample questions where possible. Do not use bold text or italics in your response. Do not use precontext. write the topic of the class lecture first.\n\n"
             f"Transcribed text:\n{transcription}"
         )
         
@@ -367,6 +367,13 @@ def upload_audio():
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
 
+    # Get language from form, default to Malayalam
+    language = request.form.get('language', 'malayalam').lower()
+    if language not in ['malayalam', 'hindi']:
+        language = 'malayalam'
+    
+    print(f"✅ Language selected: {language}")
+
     if file and allowed_file(file.filename):
         file_path = os.path.join(UPLOAD_FOLDER, file.filename)
         file.save(file_path)
@@ -379,14 +386,15 @@ def upload_audio():
         if os.path.getsize(file_path) == 0:
             return jsonify({'error': '❌ Uploaded file is empty'}), 400
 
-        processing_result = process_audio(file_path, UPLOAD_FOLDER)
+        processing_result = process_audio(file_path, UPLOAD_FOLDER, language)
         
         if 'success' in processing_result and processing_result['success']:
-            # Store transcription results
+            # Store transcription results and language choice
             transcription = processing_result['transcription']
             session['message'] = '✅ File uploaded and processed successfully'
             session['transcription'] = transcription
             session['output_file'] = processing_result['output_file']
+            session['language'] = language
             
             session['summary'] = None
             session['summary_error'] = None
@@ -650,4 +658,4 @@ def download_summary():
         return jsonify({'error': f'Error generating PDF: {str(e)}'}), 500
 
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=True)

@@ -4,17 +4,25 @@ import soundfile as sf
 import numpy as np
 import os
 
-def process_audio(audio_file_path, output_dir=None):
+def process_audio(audio_file_path, output_dir=None, language="malayalam"):
     """
     Process audio file and return transcription
     
     Args:
         audio_file_path: Path to the audio file to process
         output_dir: Directory to save chunks and transcription (optional)
+        language: Language mixed with English ('malayalam' or 'hindi')
         
     Returns:
         dict: Contains transcription text and path to saved file
     """
+    # Normalize language parameter
+    language = language.lower().strip()
+    if language not in ['malayalam', 'hindi']:
+        language = 'malayalam'
+    
+    print(f"✅ Transcription Language: {language.upper()}")
+    
     # Configure CUDA for PyTorch
     if torch.cuda.is_available():
         device = "cuda"
@@ -91,8 +99,10 @@ def process_audio(audio_file_path, output_dir=None):
         translated_texts = []
 
         for chunk_file in chunk_files:
-            # Set the language to Malayalam using forced_decoder_ids
-            forced_decoder_ids = processor.get_decoder_prompt_ids(language="malayalam")
+            # Set the language based on user selection
+            forced_decoder_ids = processor.get_decoder_prompt_ids(language=language)
+            
+            print(f"Transcribing chunk from {chunk_file} (Language: {language})")
 
             # Transcribe the audio chunk with Whisper
             transcription = model(chunk_file, return_timestamps=True, generate_kwargs={"forced_decoder_ids": forced_decoder_ids})
