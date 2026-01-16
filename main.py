@@ -1,5 +1,7 @@
 import os
 import logging
+import time
+import random
 from datetime import datetime
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 import tensorflow as tf
@@ -105,23 +107,36 @@ def generate_summary_with_gemini(transcription):
     """
     Generate a summary of the transcribed text using Gemini API.
     
+    IMPORTANT: This function is called ONCE per session after all audio segments 
+    have been combined into a single transcription. It does NOT loop through segments.
+    
+    Rate Limiting Strategy:
+    - Uses exponential backoff with jitter to handle 429 (rate limit) errors
+    - Handles RESOURCE_EXHAUSTED status (free tier quota exceeded)
+    - Respects Gemini API rate limits to avoid service disruption
+    
     Args:
-        transcription (str): The transcribed text to summarize
+        transcription (str): The combined transcribed text from all audio segments
         
     Returns:
         dict: Contains success status and either summary or error message
     """
+    MAX_RETRIES = 5  # More retries for quota exhaustion
+    BASE_WAIT_TIME = 2  # Start with 2 seconds
+    
     try:
         api_key = os.environ.get('GEMINI_API_KEY')
         
         if not api_key:
-            print("❌ Warning: GEMINI_API_KEY not found in environment variables.")
+            print("❌ FATAL: GEMINI_API_KEY not found in environment variables.")
             return {
                 'success': False,
                 'error': 'Gemini API key not configured'
             }
         
-        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+        print(f"\n✅ API Key found: {api_key[:10]}...{api_key[-5:]}")
+        
+        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
         
         prompt = (
             "Summarize the following transcribed and translated lecture recordings from a "
@@ -147,42 +162,189 @@ def generate_summary_with_gemini(transcription):
             ]
         }
         
-        response = requests.post(
-            f"{url}?key={api_key}",
-            headers={"Content-Type": "application/json"},
-            data=json.dumps(payload)
-        )
+        print(f"\n{'='*70}")
+        print(f"🔍 GEMINI API TEST & DEBUG")
+        print(f"{'='*70}")
+        print(f"✅ API Endpoint: {url}")
+        print(f"✅ Transcription: {len(transcription)} characters")
+        print(f"{'='*70}\n")
         
-        if response.status_code == 200:
-            response_data = response.json()
-            
-            if 'candidates' in response_data and len(response_data['candidates']) > 0:
-                if 'content' in response_data['candidates'][0]:
-                    content = response_data['candidates'][0]['content']
-                    if 'parts' in content and len(content['parts']) > 0:
-                        summary = content['parts'][0]['text']
+        # Retry loop with exponential backoff
+        for attempt in range(MAX_RETRIES):
+            try:
+                print(f"📤 [Attempt {attempt + 1}/{MAX_RETRIES}] Calling Gemini API...")
+                
+                response = requests.post(
+                    f"{url}?key={api_key}",
+                    headers={"Content-Type": "application/json"},
+                    data=json.dumps(payload),
+                    timeout=30
+                )
+                
+                print(f"📊 Response Status: {response.status_code} ({response.reason})")
+                
+                # Parse response
+                try:
+                    response_data = response.json()
+                    error_data = response_data.get('error', {})
+                    status = error_data.get('status', 'UNKNOWN')
+                    message = error_data.get('message', 'No message')
+                    
+                    print(f"📋 Full Response ({len(str(response_data))} chars):")
+                    print(json.dumps(response_data, indent=2)[:1200])
+                    
+                    if status:
+                        print(f"\n❌ Error Status: {status}")
+                        print(f"   Message: {message[:200]}")
+                
+                except Exception as parse_err:
+                    print(f"📋 Response Text:\n{response.text[:800]}")
+                    response_data = None
+                
+                # SUCCESS: 200 OK
+                if response.status_code == 200:
+                    if 'candidates' in response_data and len(response_data['candidates']) > 0:
+                        if 'content' in response_data['candidates'][0]:
+                            content = response_data['candidates'][0]['content']
+                            if 'parts' in content and len(content['parts']) > 0:
+                                summary = content['parts'][0]['text']
+                                print(f"\n✅ SUCCESS: Summary generated!")
+                                print(f"   Length: {len(summary)} characters\n")
+                                return {
+                                    'success': True,
+                                    'summary': summary
+                                }
+                    
+                    print(f"\n⚠️  Unexpected: 200 OK but no content extracted")
+                    print(f"   Response keys: {response_data.keys() if response_data else 'None'}\n")
+                    return {
+                        'success': False,
+                        'error': 'API returned 200 but no summary found'
+                    }
+                
+                # 429 / RESOURCE_EXHAUSTED: Rate limit or quota exceeded
+                if response.status_code == 429:
+                    error_data = response_data.get('error', {}) if response_data else {}
+                    status = error_data.get('status', '')
+                    message = error_data.get('message', '')
+                    
+                    print(f"\n⚠️  [429] Rate Limit / Quota Issue")
+                    print(f"   Status: {status}")
+                    
+                    # Extract retry delay from response
+                    retry_delay = 1
+                    if response_data and 'error' in response_data:
+                        details = response_data['error'].get('details', [])
+                        for detail in details:
+                            if detail.get('@type') == 'type.googleapis.com/google.rpc.RetryInfo':
+                                retry_str = detail.get('retryDelay', '1s')
+                                try:
+                                    retry_delay = float(retry_str.rstrip('s'))
+                                except:
+                                    retry_delay = 1
+                    
+                    if attempt < MAX_RETRIES - 1:
+                        # Use API's suggested retry delay + exponential backoff
+                        wait_time = max(retry_delay, BASE_WAIT_TIME * (2 ** attempt)) + random.uniform(0.5, 2)
+                        print(f"⏳ Waiting {wait_time:.1f}s before retry...")
+                        print(f"   (API suggested: {retry_delay}s, Exponential: {BASE_WAIT_TIME * (2 ** attempt)}s)\n")
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        print(f"\n❌ FINAL: Rate limit/quota exceeded after {MAX_RETRIES} attempts")
+                        print(f"   This likely means: Free tier quota exhausted or too many requests")
+                        print(f"   Action: Upgrade to paid plan or wait for quota reset\n")
+                        
+                        if 'RESOURCE_EXHAUSTED' in message or 'quota' in message.lower():
+                            return {
+                                'success': False,
+                                'error': 'API quota exhausted. Upgrade to paid plan: https://ai.google.dev'
+                            }
+                        else:
+                            return {
+                                'success': False,
+                                'error': 'API rate limit exceeded. Please try again in a few minutes.'
+                            }
+                
+                # 500+ Server errors
+                if response.status_code >= 500:
+                    print(f"\n❌ Server Error {response.status_code}")
+                    if attempt < MAX_RETRIES - 1:
+                        wait_time = BASE_WAIT_TIME * (2 ** attempt) + random.uniform(0.5, 2)
+                        print(f"⏳ Waiting {wait_time:.1f}s before retry...\n")
+                        time.sleep(wait_time)
+                        continue
+                    else:
                         return {
-                            'success': True,
-                            'summary': summary
+                            'success': False,
+                            'error': f'API server error {response.status_code}. Try again later.'
                         }
+                
+                # Other HTTP errors
+                if response.status_code != 200:
+                    print(f"\n❌ HTTP Error {response.status_code}: {response.reason}")
+                    if response_data:
+                        print(f"   Error: {response_data.get('error', {}).get('message', 'Unknown')[:150]}\n")
+                    return {
+                        'success': False,
+                        'error': f"API error {response.status_code}: {response.reason}"
+                    }
+                
+            except requests.exceptions.Timeout as timeout_err:
+                print(f"\n❌ Timeout Error: {str(timeout_err)[:100]}")
+                if attempt < MAX_RETRIES - 1:
+                    wait_time = BASE_WAIT_TIME * (2 ** attempt) + random.uniform(0.5, 2)
+                    print(f"⏳ Waiting {wait_time:.1f}s before retry...\n")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    return {
+                        'success': False,
+                        'error': 'API request timeout. Try with shorter transcription.'
+                    }
             
-            return {
-                'success': False,
-                'error': 'Unable to extract summary from API response'
-            }
+            except requests.exceptions.ConnectionError as conn_error:
+                print(f"\n❌ Connection Error: {str(conn_error)[:100]}")
+                if attempt < MAX_RETRIES - 1:
+                    wait_time = BASE_WAIT_TIME * (2 ** attempt) + random.uniform(0.5, 2)
+                    print(f"⏳ Waiting {wait_time:.1f}s before retry...\n")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    return {
+                        'success': False,
+                        'error': 'Network error. Check your internet connection.'
+                    }
+            
+            except Exception as retry_error:
+                print(f"\n❌ Unexpected Error: {type(retry_error).__name__}")
+                print(f"   Details: {str(retry_error)[:100]}")
+                if attempt < MAX_RETRIES - 1:
+                    wait_time = BASE_WAIT_TIME * (2 ** attempt) + random.uniform(0.5, 2)
+                    print(f"⏳ Waiting {wait_time:.1f}s before retry...\n")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    return {
+                        'success': False,
+                        'error': f'Unexpected error: {str(retry_error)[:100]}'
+                    }
         
-        else:
-            print(f"❌ Gemini API error (status code {response.status_code}): {response.text}")
-            return {
-                'success': False,
-                'error': f"API request failed with status code {response.status_code}"
-            }
-            
-    except Exception as e:
-        print(f"❌ Error calling Gemini API: {str(e)}")
+        print(f"\n❌ FINAL: All {MAX_RETRIES} retry attempts exhausted\n")
         return {
             'success': False,
-            'error': f"Error generating summary: {str(e)}"
+            'error': 'Failed after all retry attempts. API may be unavailable.'
+        }
+            
+    except Exception as e:
+        print(f"\n❌ OUTER EXCEPTION: {type(e).__name__}")
+        print(f"   Details: {str(e)[:200]}")
+        import traceback
+        traceback.print_exc()
+        print()
+        return {
+            'success': False,
+            'error': f"Error: {str(e)[:100]}"
         }
 
 @app.route('/')
@@ -253,7 +415,15 @@ def upload_audio():
 
 @app.route('/generate-notes', methods=['POST'])
 def generate_notes():
-    """Generate notes from the transcription using Gemini API."""
+    """
+    Generate notes from the SINGLE COMBINED transcription using Gemini API.
+    
+    IMPORTANT: This endpoint is called ONCE when the user clicks "Create Notes".
+    The transcription in the session is already a combination of all audio segments.
+    NO LOOPS - NO MULTIPLE API CALLS.
+    
+    The API is called a single time with all transcription data.
+    """
 
     transcription = session.get('transcription', None)
     
@@ -263,6 +433,7 @@ def generate_notes():
             'error': 'No transcription available. Please process an audio file first.'
         }), 400
     
+    # Single API call - NOT in a loop
     summary_result = generate_summary_with_gemini(transcription)
     
     if summary_result['success']:
