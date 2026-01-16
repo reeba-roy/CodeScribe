@@ -588,6 +588,21 @@ def download_summary():
         if not summary:
             return jsonify({'error': 'No summary available'}), 400
         
+        # Extract topic from the first line/sentence of the summary
+        summary_lines = summary.split('\n')
+        topic = "Study Notes"
+        topic_line_index = 0
+        
+        # Find the first non-empty line as the topic
+        for i, line in enumerate(summary_lines):
+            if line.strip():
+                topic = line.strip()
+                # Limit topic length for PDF heading
+                if len(topic) > 100:
+                    topic = topic[:97] + "..."
+                topic_line_index = i
+                break
+        
         # Create PDF in memory
         pdf_buffer = BytesIO()
         doc = SimpleDocTemplate(
@@ -611,6 +626,7 @@ def download_summary():
             textColor='#D8C1E8',  # Pastel purple
             spaceAfter=30,
             alignment=1,  # Center alignment
+            bold=True,
         )
         
         content_style = ParagraphStyle(
@@ -621,8 +637,8 @@ def download_summary():
             alignment=4,  # Justify alignment
         )
         
-        # Add title
-        title = Paragraph("Study Notes & Summary", title_style)
+        # Add topic as title
+        title = Paragraph(topic, title_style)
         elements.append(title)
         elements.append(Spacer(1, 0.3*inch))
         
@@ -631,9 +647,12 @@ def download_summary():
         elements.append(date_para)
         elements.append(Spacer(1, 0.2*inch))
         
-        # Add summary text with word wrapping
-        summary_lines = summary.split('\n')
-        for line in summary_lines:
+        # Add summary text with word wrapping, starting from the second line if topic was extracted
+        for i, line in enumerate(summary_lines):
+            # Skip the first line if it was used as topic
+            if i == topic_line_index and i == 0:
+                continue
+            
             if line.strip():
                 para = Paragraph(line, content_style)
                 elements.append(para)
@@ -658,4 +677,4 @@ def download_summary():
         return jsonify({'error': f'Error generating PDF: {str(e)}'}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False)
