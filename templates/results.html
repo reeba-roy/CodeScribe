@@ -513,12 +513,10 @@
                         {% endif %}
                     </div>
                     
-                    <!-- Download Summary button -->
-                    {% if summary %}
-                    <div style="text-align: center; margin-top: 15px; margin-bottom: 20px;">
-                        <a href="/download-summary" class="create-notes-btn" style="text-decoration: none; display: inline-block;">📥 Download Notes (PDF)</a>
+                    <!-- Download Notes button - shown after notes are generated -->
+                    <div id="download-notes-btn-container" style="text-align: center; margin-top: 20px; margin-bottom: 20px; {% if not summary %}display: none;{% endif %}">
+                        <a href="/download-summary" class="create-notes-btn" style="text-decoration: none; display: inline-block; margin: 0;">📥 Download Notes (PDF)</a>
                     </div>
-                    {% endif %}
                 </div>
                 
                 <!-- Notes loading indicator -->
@@ -596,6 +594,12 @@
                             
                             // Start with summary expanded
                             summaryContainer.classList.remove('collapsed');
+                            
+                            // Show the download button
+                            const downloadBtnContainer = document.getElementById('download-notes-btn-container');
+                            if (downloadBtnContainer) {
+                                downloadBtnContainer.style.display = 'block';
+                            }
                         } else {
                             alert('Error generating notes: ' + data.error);
                         }
