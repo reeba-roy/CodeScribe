@@ -8,25 +8,39 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
-        html, body {
-            height: 100%;
+        /* Landing Page Styles */
+        :root {
+            --pastel-purple: #D8C1E8;
+            --pastel-purple-light: #E8D9F0;
+            --pastel-purple-dark: #B89DD4;
+            --dark-bg: #1a1a2e;
+            --card-bg: #16213e;
+            --text-primary: #f0f0f0;
+            --text-secondary: #b0b0b0;
+            --gradient-start: #16213e;
+            --gradient-end: #0f3460;
+        }
+
+        * {
             margin: 0;
             padding: 0;
-            overflow-x: hidden;
+            box-sizing: border-box;
         }
-        
+
+        html, body {
+            height: 100%;
+            font-family: 'Poppins', sans-serif;
+        }
+
         body {
             display: flex;
             flex-direction: column;
             min-height: 100vh;
-            overflow-y: auto;
+            overflow-x: hidden;
+            background: linear-gradient(135deg, var(--dark-bg) 0%, #0f3460 100%);
+            color: var(--text-primary);
         }
-        
-        main {
-            flex-grow: 1;
-            padding: 20px;
-        }
-        
+
         canvas#background-animation {
             position: fixed;
             top: 0;
@@ -35,7 +49,148 @@
             height: 100%;
             z-index: -1;
         }
+
+        header {
+            padding: 40px 20px;
+            text-align: center;
+            background: linear-gradient(135deg, rgba(22, 33, 62, 0.9) 0%, rgba(15, 52, 96, 0.9) 100%);
+            border-bottom: 2px solid var(--pastel-purple);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .brand {
+            margin-bottom: 10px;
+        }
+
+        .brand h1 {
+            font-size: 48px;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--pastel-purple) 0%, var(--pastel-purple-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 2px;
+        }
+
+        .tagline {
+            font-size: 18px;
+            color: var(--text-secondary);
+            font-weight: 300;
+            letter-spacing: 1px;
+        }
+
+        main {
+            flex-grow: 1;
+            padding: 60px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .hero {
+            text-align: center;
+            max-width: 600px;
+        }
+
+        .hero h2 {
+            font-size: 48px;
+            font-weight: 600;
+            margin-bottom: 30px;
+            line-height: 1.4;
+            color: var(--text-primary);
+            text-shadow: 0 2px 10px rgba(216, 193, 232, 0.2);
+        }
+
+        .hero h2::before {
+            content: '';
+            display: block;
+            height: 3px;
+            width: 60px;
+            background: linear-gradient(90deg, var(--pastel-purple) 0%, var(--pastel-purple-light) 100%);
+            margin: 0 auto 20px;
+            border-radius: 2px;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 16px 48px;
+            font-size: 18px;
+            font-weight: 600;
+            text-decoration: none;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, var(--pastel-purple) 0%, var(--pastel-purple-dark) 100%);
+            color: white;
+            box-shadow: 0 8px 25px rgba(216, 193, 232, 0.3);
+            letter-spacing: 0.5px;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(216, 193, 232, 0.5);
+            background: linear-gradient(135deg, var(--pastel-purple-light) 0%, var(--pastel-purple) 100%);
+        }
+
+        .cta-button:active {
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 768px) {
+            .brand h1 {
+                font-size: 36px;
+            }
+
+            .hero h2 {
+                font-size: 32px;
+            }
+
+            .cta-button {
+                padding: 14px 36px;
+                font-size: 16px;
+            }
+
+            header {
+                padding: 30px 20px;
+            }
+
+            main {
+                padding: 40px 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .brand h1 {
+                font-size: 28px;
+            }
+
+            .hero h2 {
+                font-size: 24px;
+            }
+
+            .tagline {
+                font-size: 14px;
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        body.fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
     </style>
+
 </head>
 <body>
     <canvas id="background-animation"></canvas>
@@ -43,11 +198,11 @@
         <div class="brand">
             <h1>CODESCRIBE</h1>
         </div>
-        <p class="tagline">Your solution for audio conversion and code switching</p>
+        <p class="tagline">Our solution for simpler learning in bilingual classrooms</p>
     </header>
     <main>
         <section class="hero">
-            <h2>Transform Classroom Audio</h2>
+            <h2>Transform voice to smart study notes</h2>
             <a href="/upload" class="cta-button" id="get-started-button">Get Started</a>
         </section>
        
