@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CODESCRIBE - Results</title>
+    <link rel="stylesheet" href="static/style1.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow-y: auto;
+        }
+        
+        main {
+            flex-grow: 1;
+            padding: 20px;
+        }
+        
+        canvas#background-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .results-container {
+            background-color: rgba(75, 75, 75, 0.616);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px auto;
+            width: auto;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .transcription, .summary {
+            white-space: pre-wrap;
+            font-family: 'Poppins', sans-serif;
+            line-height: 1.6;
+            padding: 15px;
+            background-color: rgb(0, 0, 0);
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .transcription {
+            border-left: 4px solid #4a90e2;
+        }
+
+        .summary {
+            border-left: 4px solid #4ae28c;
+        }
+
+        .summary h4, .summary h5, .summary h6 {
+            color: #4ae28c;
+            margin-top: 15px;
+            margin-bottom: 10px;
+        }
+
+        .summary ul, .summary ol {
+            padding-left: 20px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .toggle-btn {
+            background: none;
+            border: none;
+            color: #4a90e2;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .collapsed {
+            max-height: 150px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .collapsed::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 50px;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+        }
+
+        .notes-loading {
+            display: none;
+            margin-top: 15px;
+            text-align: center;
+        }
+        
+        .notes-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #4ae28c;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        
+        .create-notes-btn {
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Hamburger menu styles */
+        .menu-toggle {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            font-size: 24px;
+            background: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        
+        .sidenav {
+            height: 100%;
+            width: 0;
+            position: fixed;
+            z-index: 999;
+            top: 0;
+            left: 0;
+            background-color: #111;
+            overflow-x: hidden;
+            transition: 0.5s;
+            padding-top: 60px;
+        }
+        
+        .sidenav a {
+            padding: 15px 8px 15px 32px;
+            text-decoration: none;
+            font-size: 18px;
+            color: #818181;
+            display: block;
+            transition: 0.3s;
+        }
+        
+        .sidenav a:hover {
+            color: #f1f1f1;
+        }
+        
+        .sidenav .closebtn {
+            position: absolute;
+            top: 0;
+            right: 25px;
+            font-size: 36px;
+            margin-left: 50px;
+        }
+        
+        #main {
+            transition: margin-left .5s;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="background-animation"></canvas>
+    <!-- Hamburger Menu Button -->
+    <button class="menu-toggle" onclick="openNav()">
+        <i class="fas fa-bars"></i>
+    </button>
+    
+    <!-- Side Navigation Menu -->
+    <div id="mySidenav" class="sidenav">
+        <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+        <a href="/"><i class="fas fa-home"></i> Home</a>
+        <a href="/upload"><i class="fas fa-upload"></i> Upload Another File</a>
+    </div>
+    
+    <!-- Main Content -->
+    <div id="main">
+        <header>
+            <div class="brand">
+                <h1>Codescribe</h1>
+            </div>
+            <p class="tagline">Your solution for audio conversion and code switching</p>
+        </header>
+        <main>
+            <div class="results-container">
+                <h2>Processing Results</h2>
+                <div class="status-message">
+                    <p>{{ message }}</p>
+                </div>
+
+                {% if transcription %}
+                <div class="section-header">
+                    <h3>Transcription:</h3>
+                    <button class="toggle-btn" id="toggle-transcription">Expand/Collapse</button>
+                </div>
+                <div class="transcription collapsed" id="transcription-container">
+                    {{ transcription }}
+                </div>
+                
+                <!-- Add the Create Notes button at the bottom of transcription section -->
+                {% if transcription and not summary %}
+                <div style="text-align: center; margin-top: 15px; margin-bottom: 20px;">
+                    <button id="create-notes-btn" class="create-notes-btn">Create Notes</button>
+                </div>
+                {% endif %}
+                {% endif %}
+
+                <!-- Notes section - initially hidden -->
+                <div id="notes-section" {% if not summary %}style="display: none;"{% endif %}>
+                    <div class="section-header">
+                        <h3>Summary & Study Notes:</h3>
+                        <button class="toggle-btn" id="toggle-summary">Expand/Collapse</button>
+                    </div>
+                    <div class="summary" id="summary-container">
+                        {% if summary %}
+                            {{ summary | safe }}
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Notes loading indicator -->
+                <div class="notes-loading" id="notes-loading">
+                    <div class="notes-spinner"></div>
+                    <span>Generating notes with Gemini AI...</span>
+                </div>
+                
+                <!-- Error message -->
+                {% if summary_error %}
+                <div class="summary">
+                    <p>Unable to generate summary: {{ summary_error }}</p>
+                    <p>Please ensure the Gemini API key is properly configured.</p>
+                </div>
+                {% endif %}
+            </div>
+        </main>
+    </div>
+    <script>
+
+        window.addEventListener('load', () => {
+            document.body.classList.add('fade-in');
+        });
+
+        // Toggle expand/collapse functionality for transcription and summary
+        document.addEventListener('DOMContentLoaded', function() {
+            const transcriptionContainer = document.getElementById('transcription-container');
+            const summaryContainer = document.getElementById('summary-container');
+            const toggleTranscription = document.getElementById('toggle-transcription');
+            const toggleSummary = document.getElementById('toggle-summary');
+            const createNotesBtn = document.getElementById('create-notes-btn');
+            const notesSection = document.getElementById('notes-section');
+            const notesLoading = document.getElementById('notes-loading');
+            
+            if (toggleTranscription && transcriptionContainer) {
+                toggleTranscription.addEventListener('click', function() {
+                    transcriptionContainer.classList.toggle('collapsed');
+                });
+            }
+            
+            if (toggleSummary && summaryContainer) {
+                toggleSummary.addEventListener('click', function() {
+                    summaryContainer.classList.toggle('collapsed');
+                });
+            }
+            
+            // Add event listener for Create Notes button
+            if (createNotesBtn) {
+                createNotesBtn.addEventListener('click', function() {
+                    // Show loading indicator
+                    notesLoading.style.display = 'block';
+                    
+                    // Disable the button while processing
+                    createNotesBtn.disabled = true;
+                    createNotesBtn.textContent = 'Generating...';
+                    
+                    // Call the API to generate notes
+                    fetch('/generate-notes', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Hide loading indicator
+                        notesLoading.style.display = 'none';
+                        
+                        if (data.success) {
+                            // Display the notes section
+                            notesSection.style.display = 'block';
+                            
+                            // Update the summary container with the generated notes
+                            summaryContainer.innerHTML = data.summary;
+                            
+                            // Start with summary expanded
+                            summaryContainer.classList.remove('collapsed');
+                        } else {
+                            alert('Error generating notes: ' + data.error);
+                        }
+                        
+                        // Re-enable the button
+                        createNotesBtn.disabled = false;
+                        createNotesBtn.textContent = 'Create Notes';
+                    })
+                    .catch(error => {
+                        // Hide loading indicator
+                        notesLoading.style.display = 'none';
+                        
+                        // Show error message
+                        alert('Error: ' + error.message);
+                        
+                        // Re-enable the button
+                        createNotesBtn.disabled = false;
+                        createNotesBtn.textContent = 'Create Notes';
+                    });
+                });
+            }
+        });
+
+        // Hamburger menu functions
+        function openNav() {
+            document.getElementById("mySidenav").style.width = "250px";
+            document.getElementById("main").style.marginLeft = "250px";
+        }
+        
+        function closeNav() {
+            document.getElementById("mySidenav").style.width = "0";
+            document.getElementById("main").style.marginLeft = "0";
+        }
+    </script>
+</body>
+</html>
