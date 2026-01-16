@@ -1,16 +1,22 @@
 import os
 import logging
+from datetime import datetime
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 import tensorflow as tf
 tf.get_logger().setLevel(logging.ERROR)
 
-from flask import Flask, request, render_template, jsonify, session
+from flask import Flask, request, render_template, jsonify, session, send_file
 from pydub import AudioSegment
 import soundfile as sf
 from processing import process_audio
 import requests
 import json
-from dotenv import load_dotenv  
+from dotenv import load_dotenv
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.units import inch
+from io import BytesIO
 
 load_dotenv()
 
@@ -315,6 +321,162 @@ def list_segments():
         import traceback
         traceback.print_exc()
         return jsonify({'error': f'❌ Error listing segments: {str(e)}'}), 500
+
+@app.route('/download-transcription', methods=['GET'])
+def download_transcription():
+    """Download transcription as PDF."""
+    try:
+        transcription = session.get('transcription', None)
+        
+        if not transcription:
+            return jsonify({'error': 'No transcription available'}), 400
+        
+        # Create PDF in memory
+        pdf_buffer = BytesIO()
+        doc = SimpleDocTemplate(
+            pdf_buffer,
+            pagesize=letter,
+            rightMargin=72,
+            leftMargin=72,
+            topMargin=72,
+            bottomMargin=18,
+        )
+        
+        # Container for the 'Flowable' objects
+        elements = []
+        
+        # Define styles
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            textColor='#D8C1E8',  # Pastel purple
+            spaceAfter=30,
+            alignment=1,  # Center alignment
+        )
+        
+        content_style = ParagraphStyle(
+            'CustomContent',
+            parent=styles['BodyText'],
+            fontSize=11,
+            leading=14,
+            alignment=4,  # Justify alignment
+        )
+        
+        # Add title
+        title = Paragraph("Lecture Transcription", title_style)
+        elements.append(title)
+        elements.append(Spacer(1, 0.3*inch))
+        
+        # Add metadata
+        date_para = Paragraph(f"<b>Generated on:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal'])
+        elements.append(date_para)
+        elements.append(Spacer(1, 0.2*inch))
+        
+        # Add transcription text with word wrapping
+        transcription_lines = transcription.split('\n')
+        for line in transcription_lines:
+            if line.strip():
+                para = Paragraph(line, content_style)
+                elements.append(para)
+            else:
+                elements.append(Spacer(1, 0.1*inch))
+        
+        # Build PDF
+        doc.build(elements)
+        
+        # Get PDF data
+        pdf_buffer.seek(0)
+        
+        return send_file(
+            pdf_buffer,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=f'transcription_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'
+        )
+    
+    except Exception as e:
+        print(f"❌ Error generating PDF: {str(e)}")
+        return jsonify({'error': f'Error generating PDF: {str(e)}'}), 500
+
+@app.route('/download-summary', methods=['GET'])
+def download_summary():
+    """Download summary/notes as PDF."""
+    try:
+        summary = session.get('summary', None)
+        
+        if not summary:
+            return jsonify({'error': 'No summary available'}), 400
+        
+        # Create PDF in memory
+        pdf_buffer = BytesIO()
+        doc = SimpleDocTemplate(
+            pdf_buffer,
+            pagesize=letter,
+            rightMargin=72,
+            leftMargin=72,
+            topMargin=72,
+            bottomMargin=18,
+        )
+        
+        # Container for the 'Flowable' objects
+        elements = []
+        
+        # Define styles
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            textColor='#D8C1E8',  # Pastel purple
+            spaceAfter=30,
+            alignment=1,  # Center alignment
+        )
+        
+        content_style = ParagraphStyle(
+            'CustomContent',
+            parent=styles['BodyText'],
+            fontSize=11,
+            leading=14,
+            alignment=4,  # Justify alignment
+        )
+        
+        # Add title
+        title = Paragraph("Study Notes & Summary", title_style)
+        elements.append(title)
+        elements.append(Spacer(1, 0.3*inch))
+        
+        # Add metadata
+        date_para = Paragraph(f"<b>Generated on:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal'])
+        elements.append(date_para)
+        elements.append(Spacer(1, 0.2*inch))
+        
+        # Add summary text with word wrapping
+        summary_lines = summary.split('\n')
+        for line in summary_lines:
+            if line.strip():
+                para = Paragraph(line, content_style)
+                elements.append(para)
+            else:
+                elements.append(Spacer(1, 0.1*inch))
+        
+        # Build PDF
+        doc.build(elements)
+        
+        # Get PDF data
+        pdf_buffer.seek(0)
+        
+        return send_file(
+            pdf_buffer,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=f'study_notes_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'
+        )
+    
+    except Exception as e:
+        print(f"❌ Error generating PDF: {str(e)}")
+        return jsonify({'error': f'Error generating PDF: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(debug=False)

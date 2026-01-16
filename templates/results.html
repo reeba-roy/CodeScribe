@@ -487,13 +487,18 @@
                 <div class="transcription collapsed" id="transcription-container">
                     {{ transcription }}
                 </div>
-                
-                <!-- Add the Create Notes button at the bottom of transcription section -->
-                {% if transcription and not summary %}
-                <div style="text-align: center; margin-top: 15px; margin-bottom: 20px;">
-                    <button id="create-notes-btn" class="create-notes-btn">Create Notes</button>
-                </div>
                 {% endif %}
+                
+                <!-- Download and Create Notes buttons -->
+                {% if transcription and not summary %}
+                <div style="text-align: center; margin-top: 15px; margin-bottom: 20px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; align-items: center;">
+                    <a href="/download-transcription" class="create-notes-btn" style="text-decoration: none; display: inline-block; margin: 0;">📥 Download Transcription (PDF)</a>
+                    <button id="create-notes-btn" class="create-notes-btn" style="margin: 0;">✨ Create Notes</button>
+                </div>
+                {% elif transcription and summary %}
+                <div style="text-align: center; margin-top: 15px; margin-bottom: 20px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; align-items: center;">
+                    <a href="/download-transcription" class="create-notes-btn" style="text-decoration: none; display: inline-block; margin: 0;">📥 Download Transcription (PDF)</a>
+                </div>
                 {% endif %}
 
                 <!-- Notes section - initially hidden -->
@@ -507,6 +512,13 @@
                             {{ summary | safe }}
                         {% endif %}
                     </div>
+                    
+                    <!-- Download Summary button -->
+                    {% if summary %}
+                    <div style="text-align: center; margin-top: 15px; margin-bottom: 20px;">
+                        <a href="/download-summary" class="create-notes-btn" style="text-decoration: none; display: inline-block;">📥 Download Notes (PDF)</a>
+                    </div>
+                    {% endif %}
                 </div>
                 
                 <!-- Notes loading indicator -->
@@ -522,7 +534,7 @@
                     <p>Please ensure the Gemini API key is properly configured.</p>
                 </div>
                 {% endif %}
-            </div>
+            </div> 
         </main>
     </div>
     <script>
